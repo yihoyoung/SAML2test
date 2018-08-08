@@ -6,13 +6,12 @@
 const SAML = require('../passport-saml/lib/passport-saml/saml').SAML
 const fs = require('fs')
 const path = require('path')
-const co = require('co')
 
 
 
 let options = {
   logoutUrl: 'http://119.254.155.28:6789/sso/saml2.0/logout',
-  issuer: 'http://lcoalhost:3000',
+  issuer: 'http://140.143.17.92:3000',
   additionalParams: {
 
   },
@@ -20,10 +19,10 @@ let options = {
 
   },
   decryptionPvk: _getPvk(),
-  logoutCallbackUrl: 'http://lcoalhost:3000/logout',
+  logoutCallbackUrl: 'http://140.143.17.92:3000/saml2/logout',
   cacheProvider: '',
-  protocol: 'http',
-  host: '',
+  protocol: '',
+  host: '140.143.17.92:3000',
   path: '',
   signatureAlgorithm: 'sha256',
   identifierFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',

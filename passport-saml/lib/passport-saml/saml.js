@@ -24,7 +24,7 @@ SAML.prototype.initialize = function (options) {
   }
 
   if (!options.path) {
-    options.path = '/saml/consume';
+    options.path = '/saml2/consume';
   }
 
   if (!options.host) {

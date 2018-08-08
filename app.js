@@ -24,8 +24,23 @@ let callbackLogin = function (ctx) {
     message: 'hello, world!'
   }
 }
-
 app.use(route.get('/login/callback', callbackLogin))
+
+let saml2logout = function (ctx) {
+  ctx.response.body = {
+    status: 200,
+    message: 'hello, world!'
+  }
+}
+app.use(route.get('/saml2/logout', saml2logout))
+
+let consume = function (ctx) {
+  ctx.response.body = {
+    status: 200,
+    message: 'This is consume page'
+  }
+}
+app.use(route.post('/saml2/consume', consume))
 
 const main = ctx => {
   ctx.response.body = 'Hello World'
@@ -34,3 +49,5 @@ const main = ctx => {
 app.use(main)
 
 app.listen(3000)
+
+console.log(`service started! localhost:3000`)
