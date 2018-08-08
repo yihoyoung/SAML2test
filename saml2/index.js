@@ -29,6 +29,7 @@ let options = {
   entryPoint: 'http://119.254.155.28:6789/sso/saml2.0/authn',
 }
 
+options.privateCert = options.decryptionPvk
 const saml = new SAML(options)
 
 // passport.use(new samlStrategy(
@@ -50,12 +51,8 @@ const saml = new SAML(options)
 
 exports.getMetadata = function (ctx) {
   const _method = 'getMetadata'
-  console.log(_method)
 
   ctx.response.type = 'xml'
-
-  console.log(JSON.stringify(typeof SAML))
-
   ctx.response.body = saml.generateServiceProviderMetadata(_getDecreptionCer())
 }
 
@@ -79,7 +76,6 @@ exports.login = async function (ctx) {
     })
   })
 
-  console.log(JSON.stringify(result))
   if (result.status === 200) {
     ctx.response.redirect(result.redirectUrl)
   } else {
