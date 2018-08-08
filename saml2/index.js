@@ -101,11 +101,8 @@ exports.consume = async function (ctx) {
     })
   })
   ctx.response.body = {
-    status: 200,
-    message: `This is consume page
-    ${check}
-
-    `
+    status: check.status || 200,
+    message: `${JSON.Stringify(check)}`
   }
 }
 
