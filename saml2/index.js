@@ -56,7 +56,6 @@ exports.getMetadata = function (ctx) {
   ctx.response.type = 'xml'
 
   console.log(JSON.stringify(typeof SAML))
-  const samlStrategy = require('passport-saml').Strategy
 
   ctx.response.body = saml.generateServiceProviderMetadata(_getDecreptionCer())
 }
