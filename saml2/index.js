@@ -85,7 +85,7 @@ exports.login = async function (ctx) {
 
 
 exports.consume = async function (ctx) {
-  let body = this.ctx.request.body
+  let body = ctx.request.body
 
   let check = await new Promise((resolve, reject) => {
     saml.validatePostResponse(body, (error, result) => {
@@ -103,7 +103,7 @@ exports.consume = async function (ctx) {
   ctx.response.body = {
     status: 200,
     message: `This is consume page
-    ${body.SAMLResponse}
+    ${check}
 
     `
   }
