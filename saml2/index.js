@@ -81,6 +81,7 @@ exports.consume = async function (ctx) {
       resolve(result)
     })
   })
+  ctx.response.type = 'json'
   ctx.response.body = {
     status: check.status || 200,
     message: `${JSON.stringify(check)}`
