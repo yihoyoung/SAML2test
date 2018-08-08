@@ -9,6 +9,7 @@ const Koa = require('koa')
 const app = new Koa()
 const route = require('koa-route')
 const koaBody = require('koa-body')
+const fs = require('fs')
 
 const saml = require('./saml2')
 
@@ -16,7 +17,7 @@ app.use(koaBody())
 
 app.use(route.get('/metadata', saml.getMetadata))
 
-app.use(route.get('/login/check', saml.login))
+app.use(route.get('/saml2/login', saml.login))
 
 let callbackLogin = function (ctx) {
   ctx.response.body = {
@@ -37,7 +38,8 @@ app.use(route.get('/saml2/logout', saml2logout))
 app.use(route.post('/saml2/consume', saml.consume))
 
 const main = ctx => {
-  ctx.response.body = 'Hello World'
+  ctx.response.type = 'html'
+  ctx.response.body = fs.createReadStream('./views/index.html')
 }
 
 app.use(main)

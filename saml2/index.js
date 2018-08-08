@@ -32,31 +32,12 @@ let options = {
 options.privateCert = options.decryptionPvk
 const saml = new SAML(options)
 
-// passport.use(new samlStrategy(
-//   {
-//     path: '/login/callback',
-//     entryPoint: 'http://119.254.155.28:6789/sso/saml2.0/authn',
-//     issuer: 'localhost:3000'
-//   },
-//   function(profile, done) {
-//     findByEmail(profile.email, function(err, user) {
-//       if (err) {
-//         return done(err);
-//       }
-//       return done(null, user);
-//     });
-//   })
-// )
-
-
 exports.getMetadata = function (ctx) {
   const _method = 'getMetadata'
 
   ctx.response.type = 'xml'
   ctx.response.body = saml.generateServiceProviderMetadata(_getDecreptionCer())
 }
-
-
 
 exports.login = async function (ctx) {
 
