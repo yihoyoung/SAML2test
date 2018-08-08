@@ -102,7 +102,7 @@ exports.consume = async function (ctx) {
   })
   ctx.response.body = {
     status: check.status || 200,
-    message: `${JSON.Stringify(check)}`
+    message: `${JSON.stringify(check)}`
   }
 }
 
