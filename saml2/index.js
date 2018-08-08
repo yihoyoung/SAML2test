@@ -84,6 +84,31 @@ exports.login = async function (ctx) {
 }
 
 
+exports.consume = async function (ctx) {
+  let body = this.ctx.request.body
+
+  let check = await new Promise((resolve, reject) => {
+    saml.validatePostResponse(body, (error, result) => {
+      if (error) {
+        reject({
+          status: 500,
+          message: error.message
+        })
+      }
+
+      console.log(result)
+      resolve(result)
+    })
+  })
+  ctx.response.body = {
+    status: 200,
+    message: `This is consume page
+    ${body.SAMLResponse}
+
+    `
+  }
+}
+
 function _getDecreptionCer() {
   let cer = fs.readFileSync(path.join(__dirname, 'credentials/rsacert.crt'))
   cer = cer.toString()

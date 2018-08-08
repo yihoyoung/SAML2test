@@ -34,13 +34,7 @@ let saml2logout = function (ctx) {
 }
 app.use(route.get('/saml2/logout', saml2logout))
 
-let consume = function (ctx) {
-  ctx.response.body = {
-    status: 200,
-    message: 'This is consume page'
-  }
-}
-app.use(route.post('/saml2/consume', consume))
+app.use(route.post('/saml2/consume', saml.consume))
 
 const main = ctx => {
   ctx.response.body = 'Hello World'
