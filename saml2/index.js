@@ -83,7 +83,7 @@ exports.consume = async function (ctx) {
   })
 
   if (!userData.status) {
-    ctx.response.session = userData
+    global.session = userData
     ctx.response.redirect('/')
   } else {
     ctx.response.status = userData.status
@@ -93,9 +93,9 @@ exports.consume = async function (ctx) {
 
 exports.logout = async function (ctx) {
 
-  console.log(JSON.stringify(ctx.session))
+  console.log(JSON.stringify(global.session))
   let result = await new Promise((resolve, reject) => {
-    saml.generateLogoutRequest({user: ctx.session})
+    saml.generateLogoutRequest({user: global.session})
   })
   ctx.response.redirect('/')
 }
