@@ -105,7 +105,7 @@ exports.logout = async function (ctx) {
   })
 
   console.log(JSON.stringify(result))
-  ctx.response.redirect('/')
+  ctx.response.redirect(result)
 }
 
 function _getDecreptionCer() {
