@@ -68,7 +68,7 @@ exports.login = async function (ctx) {
 exports.consume = async function (ctx) {
   let body = ctx.request.body
 
-  let check = await new Promise((resolve, reject) => {
+  let userData = await new Promise((resolve, reject) => {
     saml.validatePostResponse(body, (error, result) => {
       if (error) {
         reject({
@@ -82,12 +82,12 @@ exports.consume = async function (ctx) {
     })
   })
 
-  if (!result.status) {
-    ctx.session = result
+  if (!userData.status) {
+    ctx.response.session = userData
     ctx.response.redirect('/')
   } else {
-    ctx.response.status = result.status
-    ctx.response.body = result
+    ctx.response.status = userData.status
+    ctx.response.body = userData
   }
 }
 
