@@ -3,7 +3,7 @@
  */
 
 
-const SAML = require('../passport-saml/lib/passport-saml/saml').SAML
+const SAML = require('passport-saml').SAML
 const fs = require('fs')
 const path = require('path')
 
@@ -86,6 +86,13 @@ exports.consume = async function (ctx) {
     status: check.status || 200,
     message: `${JSON.stringify(check)}`
   }
+}
+
+exports.logout = async function (ctx) {
+
+  let result = await new Promise((resolve, reject) => {
+    saml.generateLogoutRequest({})
+  })
 }
 
 function _getDecreptionCer() {
