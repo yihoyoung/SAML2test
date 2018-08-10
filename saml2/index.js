@@ -95,7 +95,7 @@ exports.logout = async function (ctx) {
 
   console.log(JSON.stringify(global.session))
   let result = await new Promise((resolve, reject) => {
-    saml.generateLogoutRequest({user: global.session}, (err, result) => {
+    saml.getLogoutUrl({user: global.session}, (err, result) => {
       if (err) {
         reject(err)
       }
