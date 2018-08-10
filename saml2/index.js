@@ -81,18 +81,23 @@ exports.consume = async function (ctx) {
       resolve(result)
     })
   })
-  ctx.response.type = 'json'
-  ctx.response.body = {
-    status: check.status || 200,
-    message: `${JSON.stringify(check)}`
+
+  if (!result.status) {
+    ctx.session = result
+    ctx.response.redirect('/')
+  } else {
+    ctx.response.status = result.status
+    ctx.response.body = result
   }
 }
 
 exports.logout = async function (ctx) {
 
+  console.log(JSON.stringify(ctx.session))
   let result = await new Promise((resolve, reject) => {
-    saml.generateLogoutRequest({})
+    saml.generateLogoutRequest({user: ctx.session})
   })
+  ctx.response.redirect('/')
 }
 
 function _getDecreptionCer() {
