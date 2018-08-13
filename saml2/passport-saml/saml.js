@@ -330,6 +330,9 @@ SAML.prototype.requestToUrl = function (request, response, operation, additional
     // https://nodejs.org/api/url.html#url_url_format_urlobj
     delete target.search;
 
+
+    console.log(JSON.stringify(target))
+
     callback(null, url.format(target));
   }
 };
