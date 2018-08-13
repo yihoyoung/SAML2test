@@ -3,69 +3,11 @@
  */
 
 
-const SAML = require('passport-saml').SAML
+const SAML = require('./passport-saml').SAML
 const fs = require('fs')
 const path = require('path')
 
-SAML.prototype.requestToUrl = function (request, response, operation, additionalParameters, callback) {
-  var self = this;
-  if (self.options.skipRequestCompression)
-    requestToUrlHelper(null, new Buffer(request || response, 'utf8'));
-  else
-    zlib.deflateRaw(request || response, requestToUrlHelper);
 
-  function requestToUrlHelper(err, buffer) {
-    if (err) {
-      return callback(err);
-    }
-
-    var base64 = buffer.toString('base64');
-    var target = url.parse(self.options.entryPoint, true);
-    let IDPClientId
-
-    if (operation === 'logout') {
-      if (self.options.logoutUrl) {
-        target = url.parse(self.options.logoutUrl, true);
-      }
-      if (request.IDPClientId) {
-        IDPClientId = request.IDPClientId
-      }
-    } else if (operation !== 'authorize') {
-        return callback(new Error("Unknown operation: "+operation));
-    }
-
-    var samlMessage = request ? {
-      SAMLRequest: base64
-    } : {
-      SAMLResponse: base64
-    };
-    Object.keys(additionalParameters).forEach(function(k) {
-      samlMessage[k] = additionalParameters[k];
-    });
-
-    if (IDPClientId) {
-      samlMessage.IDPClientId = IDPClientId
-    }
-
-    if (self.options.privateCert) {
-      try {
-        // sets .SigAlg and .Signature
-        self.signRequest(samlMessage);
-      } catch (ex) {
-        return callback(ex);
-      }
-    }
-    Object.keys(samlMessage).forEach(function(k) {
-      target.query[k] = samlMessage[k];
-    });
-
-    // Delete 'search' to for pulling query string from 'query'
-    // https://nodejs.org/api/url.html#url_url_format_urlobj
-    delete target.search;
-
-    callback(null, url.format(target));
-  }
-};
 
 let options = {
   logoutUrl: 'http://119.254.155.28:6789/sso/saml2.0/logout',
