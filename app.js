@@ -27,7 +27,8 @@ let callbackLogin = function (ctx) {
 }
 app.use(route.get('/login/callback', callbackLogin))
 
-app.use(route.get('/saml2/logout', saml.logout))
+app.use(route.get('/logout', saml.logout))
+app.use(route.get('/saml2/logout', saml.logoutResponse))
 
 app.use(route.post('/saml2/consume', saml.consume))
 

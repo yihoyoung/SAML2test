@@ -107,6 +107,34 @@ exports.logout = async function (ctx) {
   ctx.response.redirect(result)
 }
 
+exports.logoutResponse = async function (ctx) {
+
+  let body = ctx.request.body
+  console.log(JSON.stringify(body))
+
+  let userData = await new Promise((resolve, reject) => {
+    saml.validatePostResponse(body, (error, result) => {
+      if (error) {
+        reject({
+          status: 500,
+          message: error.message
+        })
+      }
+
+      console.log(result)
+      resolve(result)
+    })
+  })
+
+  if (!userData.status) {
+    global.session = userData
+    ctx.response.redirect('/')
+  } else {
+    ctx.response.status = userData.status
+    ctx.response.body = userData
+  }
+}
+
 function _getDecreptionCer() {
   let cer = fs.readFileSync(path.join(__dirname, 'credentials/rsacert.crt'))
   cer = cer.toString()
