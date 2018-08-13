@@ -130,6 +130,9 @@ SAML.prototype.signRequest = function (samlMessage) {
   if (samlMessage.SigAlg) {
     samlMessageToSign.SigAlg = samlMessage.SigAlg;
   }
+  if (samlMessage.IDPClientId) {
+    samlMessageToSign.IDPClientId = samlMessage.IDPClientId;
+  }
   signer.update(querystring.stringify(samlMessageToSign));
   samlMessage.Signature = signer.sign(this.options.privateCert, 'base64');
 };
