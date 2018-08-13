@@ -353,6 +353,9 @@ SAML.prototype.getAdditionalParams = function (req, operation) {
   }
   if (operation == "logout") {
     optionsAdditionalParamsForThisOperation = this.options.additionalLogoutParams || {};
+    if (req.user.IDPClientId) {
+      optionsAdditionalParamsForThisOperation.IDPClientId = req.user.IDPClientId
+    }
   }
 
   Object.keys(optionsAdditionalParamsForThisOperation).forEach(function(k) {
