@@ -131,7 +131,7 @@ SAML.prototype.signRequest = function (samlMessage) {
     samlMessageToSign.SigAlg = samlMessage.SigAlg;
   }
   if (samlMessage.IDPClientId) {
-    samlMessageToSign.IDPClientId = samlMessage.IDPClientId;
+    // samlMessageToSign.IDPClientId = samlMessage.IDPClientId;
   }
   signer.update(querystring.stringify(samlMessageToSign));
   samlMessage.Signature = signer.sign(this.options.privateCert, 'base64');
@@ -364,7 +364,7 @@ SAML.prototype.getAdditionalParams = function (req, operation) {
   if (operation == "logout") {
     optionsAdditionalParamsForThisOperation = this.options.additionalLogoutParams || {};
     if (req.user.IDPClientId) {
-      optionsAdditionalParamsForThisOperation.IDPClientId = req.user.IDPClientId
+      // optionsAdditionalParamsForThisOperation.IDPClientId = req.user.IDPClientId
     }
   }
 
