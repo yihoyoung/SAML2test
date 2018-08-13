@@ -83,6 +83,7 @@ exports.consume = async function (ctx) {
 
   if (!userData.status) {
     global.session = userData
+    global.session.sessionIndex = userData.IDPClientId
     ctx.response.redirect('/')
   } else {
     ctx.response.status = userData.status
