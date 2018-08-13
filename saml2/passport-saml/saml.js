@@ -229,9 +229,9 @@ SAML.prototype.generateLogoutRequest = function (req) {
         '@Format': req.user.nameIDFormat,
         '#text': req.user.nameID
       },
-      'saml:IDPClientID' : {
+      'saml:IDPClientId' : {
         '@Format': req.user.nameIDFormat,
-        '#text': req.user.IDPClientID
+        '#text': req.user.IDPClientId
       }
     }
   };
