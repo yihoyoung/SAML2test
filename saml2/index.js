@@ -22,7 +22,7 @@ let options = {
   cacheProvider: '',
   protocol: '',
   host: '140.143.17.92:3000',
-  path: '',
+  path: '/saml2/consume',
   signatureAlgorithm: 'sha256',
   identifierFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
   entryPoint: 'http://119.254.155.28:6789/sso/saml2.0/authn',

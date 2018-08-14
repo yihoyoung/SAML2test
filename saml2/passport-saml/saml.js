@@ -1,153 +1,150 @@
-var zlib = require('zlib');
-var xml2js = require('xml2js');
-var xmlCrypto = require('xml-crypto');
-var crypto = require('crypto');
-var xmldom = require('xmldom');
-var url = require('url');
-var querystring = require('querystring');
-var xmlbuilder = require('xmlbuilder');
-var xmlenc = require('xml-encryption');
-var xpath = xmlCrypto.xpath;
-var InMemoryCacheProvider = require('./inmemory-cache-provider.js').CacheProvider;
-var Q = require('q');
+var zlib = require('zlib')
+var xml2js = require('xml2js')
+var xmlCrypto = require('xml-crypto')
+var crypto = require('crypto')
+var xmldom = require('xmldom')
+var url = require('url')
+var querystring = require('querystring')
+var xmlbuilder = require('xmlbuilder')
+var xmlenc = require('xml-encryption')
+var xpath = xmlCrypto.xpath
+var InMemoryCacheProvider = require('./inmemory-cache-provider.js').CacheProvider
+var Q = require('q')
 
 var SAML = function (options) {
-  var self = this;
+  var self = this
 
-  this.options = this.initialize(options);
-  this.cacheProvider = this.options.cacheProvider;
-};
+  this.options = this.initialize(options)
+  this.cacheProvider = this.options.cacheProvider
+}
 
 SAML.prototype.initialize = function (options) {
   if (!options) {
-    options = {};
+    options = {}
   }
 
   if (!options.path) {
-    options.path = '/saml/consume';
+    options.path = '/saml/consume'
   }
 
   if (!options.host) {
-    options.host = 'localhost';
+    options.host = 'localhost'
   }
 
   if (!options.issuer) {
-    options.issuer = 'onelogin_saml';
+    options.issuer = 'onelogin_saml'
   }
 
   if (options.identifierFormat === undefined) {
-    options.identifierFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress";
+    options.identifierFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
   }
 
   if (options.authnContext === undefined) {
-    options.authnContext = "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport";
+    options.authnContext = "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport"
   }
 
   if (!options.acceptedClockSkewMs) {
     // default to no skew
-    options.acceptedClockSkewMs = 0;
+    options.acceptedClockSkewMs = 0
   }
 
   if(!options.validateInResponseTo){
-    options.validateInResponseTo = false;
+    options.validateInResponseTo = false
   }
 
   if(!options.requestIdExpirationPeriodMs){
-    options.requestIdExpirationPeriodMs = 28800000;  // 8 hours
+    options.requestIdExpirationPeriodMs = 28800000  // 8 hours
   }
 
   if(!options.cacheProvider){
       options.cacheProvider = new InMemoryCacheProvider(
-          {keyExpirationPeriodMs: options.requestIdExpirationPeriodMs });
+          {keyExpirationPeriodMs: options.requestIdExpirationPeriodMs })
   }
 
   if (!options.logoutUrl) {
     // Default to Entry Point
-    options.logoutUrl = options.entryPoint || '';
+    options.logoutUrl = options.entryPoint || ''
   }
 
   // sha1, sha256, or sha512
   if (!options.signatureAlgorithm) {
-    options.signatureAlgorithm = 'sha1';
+    options.signatureAlgorithm = 'sha1'
   }
 
-  return options;
-};
+  return options
+}
 
 SAML.prototype.getProtocol = function (req) {
-  return this.options.protocol || (req.protocol || 'http').concat('://');
-};
+  return this.options.protocol || (req.protocol || 'http').concat('://')
+}
 
 SAML.prototype.getCallbackUrl = function (req) {
     // Post-auth destination
   if (this.options.callbackUrl) {
-    return this.options.callbackUrl;
+    return this.options.callbackUrl
   } else {
-    var host;
+    var host
     if (req.headers) {
-      host = req.headers.host;
+      host = req.headers.host
     } else {
-      host = this.options.host;
+      host = this.options.host
     }
-    return this.getProtocol(req) + host + this.options.path;
+    return this.getProtocol(req) + host + this.options.path
   }
-};
+}
 
 SAML.prototype.generateUniqueID = function () {
-  return crypto.randomBytes(10).toString('hex');
-};
+  return crypto.randomBytes(10).toString('hex')
+}
 
 SAML.prototype.generateInstant = function () {
-  return new Date().toISOString();
-};
+  return new Date().toISOString()
+}
 
 SAML.prototype.signRequest = function (samlMessage) {
-  var signer;
-  var samlMessageToSign = {};
+  var signer
+  var samlMessageToSign = {}
   switch(this.options.signatureAlgorithm) {
     case 'sha256':
-      samlMessage.SigAlg = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
-      signer = crypto.createSign('RSA-SHA256');
-      break;
+      samlMessage.SigAlg = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+      signer = crypto.createSign('RSA-SHA256')
+      break
     case 'sha512':
-      samlMessage.SigAlg = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha512';
-      signer = crypto.createSign('RSA-SHA512');
-      break;
+      samlMessage.SigAlg = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha512'
+      signer = crypto.createSign('RSA-SHA512')
+      break
     default:
-      samlMessage.SigAlg = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
-      signer = crypto.createSign('RSA-SHA1');
-      break;
+      samlMessage.SigAlg = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
+      signer = crypto.createSign('RSA-SHA1')
+      break
   }
   if (samlMessage.SAMLRequest) {
-    samlMessageToSign.SAMLRequest = samlMessage.SAMLRequest;
+    samlMessageToSign.SAMLRequest = samlMessage.SAMLRequest
   }
   if (samlMessage.SAMLResponse) {
-    samlMessageToSign.SAMLResponse = samlMessage.SAMLResponse;
+    samlMessageToSign.SAMLResponse = samlMessage.SAMLResponse
   }
   if (samlMessage.RelayState) {
-    samlMessageToSign.RelayState = samlMessage.RelayState;
+    samlMessageToSign.RelayState = samlMessage.RelayState
   }
   if (samlMessage.SigAlg) {
-    samlMessageToSign.SigAlg = samlMessage.SigAlg;
+    samlMessageToSign.SigAlg = samlMessage.SigAlg
   }
-  if (samlMessage.IDPClientId) {
-    // samlMessageToSign.IDPClientId = samlMessage.IDPClientId;
-  }
-  signer.update(querystring.stringify(samlMessageToSign));
-  samlMessage.Signature = signer.sign(this.options.privateCert, 'base64');
-};
+  signer.update(querystring.stringify(samlMessageToSign))
+  samlMessage.Signature = signer.sign(this.options.privateCert, 'base64')
+}
 
 SAML.prototype.generateAuthorizeRequest = function (req, isPassive, callback) {
-  var self = this;
-  var id = "_" + self.generateUniqueID();
-  var instant = self.generateInstant();
-  var forceAuthn = self.options.forceAuthn || false;
+  var self = this
+  var id = "_" + self.generateUniqueID()
+  var instant = self.generateInstant()
+  var forceAuthn = self.options.forceAuthn || false
 
   Q.fcall(function() {
     if(self.options.validateInResponseTo) {
-      return Q.ninvoke(self.cacheProvider, 'save', id, instant);
+      return Q.ninvoke(self.cacheProvider, 'save', id, instant)
     } else {
-      return Q();
+      return Q()
     }
   })
   .then(function(){
@@ -165,13 +162,13 @@ SAML.prototype.generateAuthorizeRequest = function (req, isPassive, callback) {
           '#text': self.options.issuer
         }
       }
-    };
+    }
 
     if (isPassive)
-      request['samlp:AuthnRequest']['@IsPassive'] = true;
+      request['samlp:AuthnRequest']['@IsPassive'] = true
 
     if (forceAuthn) {
-      request['samlp:AuthnRequest']['@ForceAuthn'] = true;
+      request['samlp:AuthnRequest']['@ForceAuthn'] = true
     }
 
     if (self.options.identifierFormat) {
@@ -179,7 +176,7 @@ SAML.prototype.generateAuthorizeRequest = function (req, isPassive, callback) {
         '@xmlns:samlp': 'urn:oasis:names:tc:SAML:2.0:protocol',
         '@Format': self.options.identifierFormat,
         '@AllowCreate': 'true'
-      };
+      }
     }
 
     if (!self.options.disableRequestedAuthnContext) {
@@ -190,28 +187,28 @@ SAML.prototype.generateAuthorizeRequest = function (req, isPassive, callback) {
           '@xmlns:saml': 'urn:oasis:names:tc:SAML:2.0:assertion',
           '#text': self.options.authnContext
         }
-      };
+      }
     }
 
     if (self.options.attributeConsumingServiceIndex) {
-      request['samlp:AuthnRequest']['@AttributeConsumingServiceIndex'] = self.options.attributeConsumingServiceIndex;
+      request['samlp:AuthnRequest']['@AttributeConsumingServiceIndex'] = self.options.attributeConsumingServiceIndex
     }
 
     if (self.options.providerName) {
-      request['samlp:AuthnRequest']['@ProviderName'] = self.options.providerName;
+      request['samlp:AuthnRequest']['@ProviderName'] = self.options.providerName
     }
 
-    callback(null, xmlbuilder.create(request).end());
+    callback(null, xmlbuilder.create(request).end())
   })
   .fail(function(err){
-    callback(err);
+    callback(err)
   })
-  .done();
-};
+  .done()
+}
 
 SAML.prototype.generateLogoutRequest = function (req) {
-  var id = "_" + this.generateUniqueID();
-  var instant = this.generateInstant();
+  var id = "_" + this.generateUniqueID()
+  var instant = this.generateInstant()
 
   var request = {
     'samlp:LogoutRequest' : {
@@ -234,29 +231,29 @@ SAML.prototype.generateLogoutRequest = function (req) {
         '#text': req.user.IDPClientId
       }
     }
-  };
+  }
 
   if (typeof(req.user.nameQualifier) !== 'undefined') {
-    request['samlp:LogoutRequest']['saml:NameID']['@NameQualifier'] = req.user.nameQualifier;
+    request['samlp:LogoutRequest']['saml:NameID']['@NameQualifier'] = req.user.nameQualifier
   }
 
   if (typeof(req.user.spNameQualifier) !== 'undefined') {
-    request['samlp:LogoutRequest']['saml:NameID']['@SPNameQualifier'] = req.user.spNameQualifier;
+    request['samlp:LogoutRequest']['saml:NameID']['@SPNameQualifier'] = req.user.spNameQualifier
   }
 
   if (req.user.sessionIndex) {
     request['samlp:LogoutRequest']['saml2p:SessionIndex'] = {
       '@xmlns:saml2p': 'urn:oasis:names:tc:SAML:2.0:protocol',
       '#text': req.user.sessionIndex
-    };
+    }
   }
 
-  return xmlbuilder.create(request).end();
-};
+  return xmlbuilder.create(request).end()
+}
 
 SAML.prototype.generateLogoutResponse = function (req, logoutRequest) {
-  var id = "_" + this.generateUniqueID();
-  var instant = this.generateInstant();
+  var id = "_" + this.generateUniqueID()
+  var instant = this.generateInstant()
 
   var request = {
     'samlp:LogoutResponse' : {
@@ -276,153 +273,144 @@ SAML.prototype.generateLogoutResponse = function (req, logoutRequest) {
         }
       }
     }
-  };
+  }
 
-  return xmlbuilder.create(request).end();
-};
+  return xmlbuilder.create(request).end()
+}
 
 SAML.prototype.requestToUrl = function (request, response, operation, additionalParameters, callback) {
-  var self = this;
+  var self = this
   if (self.options.skipRequestCompression)
-    requestToUrlHelper(null, new Buffer(request || response, 'utf8'));
+    requestToUrlHelper(null, new Buffer(request || response, 'utf8'))
   else
-    zlib.deflateRaw(request || response, requestToUrlHelper);
+    zlib.deflateRaw(request || response, requestToUrlHelper)
 
   function requestToUrlHelper(err, buffer) {
     if (err) {
-      return callback(err);
+      return callback(err)
     }
 
-    var base64 = buffer.toString('base64');
-    var target = url.parse(self.options.entryPoint, true);
-    let IDPClientId
+    var base64 = buffer.toString('base64')
+    var target = url.parse(self.options.entryPoint, true)
 
     if (operation === 'logout') {
       if (self.options.logoutUrl) {
-        target = url.parse(self.options.logoutUrl, true);
-      }
-      if (request.IDPClientId) {
-        IDPClientId = request.IDPClientId
+        target = url.parse(self.options.logoutUrl, true)
       }
     } else if (operation !== 'authorize') {
-        return callback(new Error("Unknown operation: "+operation));
+        return callback(new Error("Unknown operation: "+operation))
     }
 
     var samlMessage = request ? {
       SAMLRequest: base64
     } : {
       SAMLResponse: base64
-    };
-    Object.keys(additionalParameters).forEach(function(k) {
-      samlMessage[k] = additionalParameters[k];
-    });
-
-    if (IDPClientId) {
-      samlMessage.IDPClientId = IDPClientId
     }
+    Object.keys(additionalParameters).forEach(function(k) {
+      samlMessage[k] = additionalParameters[k]
+    })
 
     if (self.options.privateCert) {
       try {
         // sets .SigAlg and .Signature
-        self.signRequest(samlMessage);
+        self.signRequest(samlMessage)
       } catch (ex) {
-        return callback(ex);
+        return callback(ex)
       }
     }
     Object.keys(samlMessage).forEach(function(k) {
-      target.query[k] = samlMessage[k];
-    });
+      target.query[k] = samlMessage[k]
+    })
 
     // Delete 'search' to for pulling query string from 'query'
     // https://nodejs.org/api/url.html#url_url_format_urlobj
-    delete target.search;
-
+    delete target.search
 
     console.log(JSON.stringify(target))
 
-    callback(null, url.format(target));
+    callback(null, url.format(target))
   }
-};
+}
 
 SAML.prototype.getAdditionalParams = function (req, operation) {
-  var additionalParams = {};
+  var additionalParams = {}
 
-  var RelayState = req.query && req.query.RelayState || req.body && req.body.RelayState;
+  var RelayState = req.query && req.query.RelayState || req.body && req.body.RelayState
   if (RelayState) {
-    additionalParams.RelayState = RelayState;
+    additionalParams.RelayState = RelayState
   }
 
-  var optionsAdditionalParams = this.options.additionalParams || {};
+  var optionsAdditionalParams = this.options.additionalParams || {}
   Object.keys(optionsAdditionalParams).forEach(function(k) {
-    additionalParams[k] = optionsAdditionalParams[k];
-  });
+    additionalParams[k] = optionsAdditionalParams[k]
+  })
 
-  var optionsAdditionalParamsForThisOperation = {};
+  var optionsAdditionalParamsForThisOperation = {}
   if (operation == "authorize") {
-    optionsAdditionalParamsForThisOperation = this.options.additionalAuthorizeParams || {};
+    optionsAdditionalParamsForThisOperation = this.options.additionalAuthorizeParams || {}
   }
   if (operation == "logout") {
-    optionsAdditionalParamsForThisOperation = this.options.additionalLogoutParams || {};
+    optionsAdditionalParamsForThisOperation = this.options.additionalLogoutParams || {}
     if (req.user.IDPClientId) {
       // optionsAdditionalParamsForThisOperation.IDPClientId = req.user.IDPClientId
     }
   }
 
   Object.keys(optionsAdditionalParamsForThisOperation).forEach(function(k) {
-    additionalParams[k] = optionsAdditionalParamsForThisOperation[k];
-  });
+    additionalParams[k] = optionsAdditionalParamsForThisOperation[k]
+  })
 
-  return additionalParams;
-};
+  return additionalParams
+}
 
 SAML.prototype.getAuthorizeUrl = function (req, callback) {
-  var self = this;
+  var self = this
   self.generateAuthorizeRequest(req, self.options.passive, function(err, request){
     if (err)
-      return callback(err);
-    var operation = 'authorize';
-    self.requestToUrl(request, null, operation, self.getAdditionalParams(req, operation), callback);
-  });
-};
+      return callback(err)
+    var operation = 'authorize'
+    self.requestToUrl(request, null, operation, self.getAdditionalParams(req, operation), callback)
+  })
+}
 
 SAML.prototype.getAuthorizeForm = function (req, callback) {
-  var self = this;
+  var self = this
 
   // The quoteattr() function is used in a context, where the result will not be evaluated by javascript
   // but must be interpreted by an XML or HTML parser, and it must absolutely avoid breaking the syntax
   // of an element attribute.
   var quoteattr = function(s, preserveCR) {
-    preserveCR = preserveCR ? '&#13;' : '\n';
+    preserveCR = preserveCR ? '&#13' : '\n'
     return ('' + s) // Forces the conversion to string.
-      .replace(/&/g, '&amp;') // This MUST be the 1st replacement.
-      .replace(/'/g, '&apos;') // The 4 other predefined entities, required.
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
+      .replace(/&/g, '&amp') // This MUST be the 1st replacement.
+      .replace(/'/g, '&apos') // The 4 other predefined entities, required.
+      .replace(/"/g, '&quot')
+      .replace(/</g, '&lt')
+      .replace(/>/g, '&gt')
        // Add other replacements here for HTML only
        // Or for XML, only if the named entities are defined in its DTD.
       .replace(/\r\n/g, preserveCR) // Must be before the next replacement.
-      .replace(/[\r\n]/g, preserveCR);
-  };
+      .replace(/[\r\n]/g, preserveCR)
+  }
 
   var getAuthorizeFormHelper = function(err, buffer) {
     if (err) {
-      return callback(err);
+      return callback(err)
     }
 
-    var operation = 'authorize';
-    var additionalParameters = self.getAdditionalParams(req, operation);
+    var operation = 'authorize'
+    var additionalParameters = self.getAdditionalParams(req, operation)
     var samlMessage = {
       SAMLRequest: buffer.toString('base64')
-    };
+    }
 
     Object.keys(additionalParameters).forEach(function(k) {
-      samlMessage[k] = additionalParameters[k] || '';
-    });
+      samlMessage[k] = additionalParameters[k] || ''
+    })
 
     var formInputs = Object.keys(samlMessage).map(function(k) {
-      return '<input type="hidden" name="' + k + '" value="' + quoteattr(samlMessage[k]) + '" />';
-    }).join('\r\n');
+      return '<input type="hidden" name="' + k + '" value="' + quoteattr(samlMessage[k]) + '" />'
+    }).join('\r\n')
 
     callback(null, [
       '<!DOCTYPE html>',
@@ -439,69 +427,69 @@ SAML.prototype.getAuthorizeForm = function (req, callback) {
       formInputs,
       '<input type="submit" value="Submit" />',
       '</form>',
-      '<script>document.forms[0].style.display="none";</script>', // Hide the form if JavaScript is enabled
+      '<script>document.forms[0].style.display="none"</script>', // Hide the form if JavaScript is enabled
       '</body>',
       '</html>'
-    ].join('\r\n'));
-  };
+    ].join('\r\n'))
+  }
 
   self.generateAuthorizeRequest(req, self.options.passive, function(err, request) {
     if (err) {
-      return callback(err);
+      return callback(err)
     }
 
     if (self.options.skipRequestCompression) {
-      getAuthorizeFormHelper(null, new Buffer(request, 'utf8'));
+      getAuthorizeFormHelper(null, new Buffer(request, 'utf8'))
     } else {
-      zlib.deflateRaw(request, getAuthorizeFormHelper);
+      zlib.deflateRaw(request, getAuthorizeFormHelper)
     }
-  });
+  })
 
-};
+}
 
 SAML.prototype.getLogoutUrl = function(req, callback) {
-  var request = this.generateLogoutRequest(req);
-  var operation = 'logout';
-  this.requestToUrl(request, null, operation, this.getAdditionalParams(req, operation), callback);
-};
+  var request = this.generateLogoutRequest(req)
+  var operation = 'logout'
+  this.requestToUrl(request, null, operation, this.getAdditionalParams(req, operation), callback)
+}
 
 SAML.prototype.getLogoutResponseUrl = function(req, callback) {
-  var response = this.generateLogoutResponse(req, req.samlLogoutRequest);
-  var operation = 'logout';
-  this.requestToUrl(null, response, operation, this.getAdditionalParams(req, operation), callback);
-};
+  var response = this.generateLogoutResponse(req, req.samlLogoutRequest)
+  var operation = 'logout'
+  this.requestToUrl(null, response, operation, this.getAdditionalParams(req, operation), callback)
+}
 
 SAML.prototype.certToPEM = function (cert) {
-  cert = cert.match(/.{1,64}/g).join('\n');
+  cert = cert.match(/.{1,64}/g).join('\n')
 
   if (cert.indexOf('-BEGIN CERTIFICATE-') === -1)
-    cert = "-----BEGIN CERTIFICATE-----\n" + cert;
+    cert = "-----BEGIN CERTIFICATE-----\n" + cert
   if (cert.indexOf('-END CERTIFICATE-') === -1)
-    cert = cert + "\n-----END CERTIFICATE-----\n";
+    cert = cert + "\n-----END CERTIFICATE-----\n"
 
-  return cert;
-};
+  return cert
+}
 
 SAML.prototype.certsToCheck = function () {
-  var self = this;
+  var self = this
   if (!self.options.cert) {
-    return Q();
+    return Q()
   }
   if (typeof(self.options.cert) === 'function') {
     return Q.nfcall(self.options.cert)
     .then(function(certs) {
       if (!Array.isArray(certs)) {
-        certs = [certs];
+        certs = [certs]
       }
-      return Q(certs);
-    });
+      return Q(certs)
+    })
   }
-  var certs = self.options.cert;
+  var certs = self.options.cert
   if (!Array.isArray(certs)) {
-    certs = [certs];
+    certs = [certs]
   }
-  return Q(certs);
-};
+  return Q(certs)
+}
 
 // This function checks that the |currentNode| in the |fullXml| document contains exactly 1 valid
 //   signature of the |currentNode|.
@@ -509,69 +497,69 @@ SAML.prototype.certsToCheck = function () {
 // See https://github.com/bergie/passport-saml/issues/19 for references to some of the attack
 //   vectors against SAML signature verification.
 SAML.prototype.validateSignature = function (fullXml, currentNode, certs) {
-  var self = this;
+  var self = this
   var xpathSigQuery = ".//*[local-name(.)='Signature' and " +
-                      "namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']";
-  var signatures = xpath(currentNode, xpathSigQuery);
+                      "namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']"
+  var signatures = xpath(currentNode, xpathSigQuery)
   // This function is expecting to validate exactly one signature, so if we find more or fewer
   //   than that, reject.
   if (signatures.length != 1)
-    return false;
-  var signature = signatures[0];
+    return false
+  var signature = signatures[0]
   return certs.some(function (certToCheck) {
-    return self.validateSignatureForCert(signature, certToCheck, fullXml, currentNode);
-  });
-};
+    return self.validateSignatureForCert(signature, certToCheck, fullXml, currentNode)
+  })
+}
 
 // This function checks that the |signature| is signed with a given |cert|.
 SAML.prototype.validateSignatureForCert = function (signature, cert, fullXml, currentNode) {
-  var self = this;
-  var sig = new xmlCrypto.SignedXml();
+  var self = this
+  var sig = new xmlCrypto.SignedXml()
   sig.keyInfoProvider = {
     getKeyInfo: function (key) {
-      return "<X509Data></X509Data>";
+      return "<X509Data></X509Data>"
     },
     getKey: function (keyInfo) {
-      return self.certToPEM(cert);
+      return self.certToPEM(cert)
     }
-  };
-  sig.loadSignature(signature);
+  }
+  sig.loadSignature(signature)
   // We expect each signature to contain exactly one reference to the top level of the xml we
   //   are validating, so if we see anything else, reject.
   if (sig.references.length != 1 )
-    return false;
-  var refUri = sig.references[0].uri;
-  var refId = (refUri[0] === '#') ? refUri.substring(1) : refUri;
+    return false
+  var refUri = sig.references[0].uri
+  var refId = (refUri[0] === '#') ? refUri.substring(1) : refUri
   // If we can't find the reference at the top level, reject
-  var idAttribute = currentNode.getAttribute('ID') ? 'ID' : 'Id';
+  var idAttribute = currentNode.getAttribute('ID') ? 'ID' : 'Id'
   if (currentNode.getAttribute(idAttribute) != refId)
-    return false;
+    return false
   // If we find any extra referenced nodes, reject.  (xml-crypto only verifies one digest, so
   //   multiple candidate references is bad news)
   var totalReferencedNodes = xpath(currentNode.ownerDocument,
-                                  "//*[@" + idAttribute + "='" + refId + "']");
+                                  "//*[@" + idAttribute + "='" + refId + "']")
   if (totalReferencedNodes.length > 1)
-    return false;
-  return sig.checkSignature(fullXml);
-};
+    return false
+  return sig.checkSignature(fullXml)
+}
 
 SAML.prototype.validatePostResponse = function (container, callback) {
-  var self = this;
+  var self = this
 
-  var xml, doc, inResponseTo;
+  var xml, doc, inResponseTo
 
   Q.fcall(function(){
-    xml = new Buffer(container.SAMLResponse, 'base64').toString('utf8');
+    xml = new Buffer(container.SAMLResponse, 'base64').toString('utf8')
     doc = new xmldom.DOMParser({
-    }).parseFromString(xml);
+    }).parseFromString(xml)
 
     if (!doc.hasOwnProperty('documentElement'))
-      throw new Error('SAMLResponse is not valid base64-encoded XML');
+      throw new Error('SAMLResponse is not valid base64-encoded XML')
 
-    inResponseTo = xpath(doc, "/*[local-name()='Response']/@InResponseTo");
+    inResponseTo = xpath(doc, "/*[local-name()='Response']/@InResponseTo")
 
     if(inResponseTo){
-      inResponseTo = inResponseTo.length ? inResponseTo[0].nodeValue : null;
+      inResponseTo = inResponseTo.length ? inResponseTo[0].nodeValue : null
     }
 
     if(self.options.validateInResponseTo){
@@ -579,64 +567,64 @@ SAML.prototype.validatePostResponse = function (container, callback) {
         return Q.ninvoke(self.cacheProvider, 'get', inResponseTo)
           .then(function(result) {
             if (!result)
-              throw new Error('InResponseTo is not valid');
-            return Q();
-          });
+              throw new Error('InResponseTo is not valid')
+            return Q()
+          })
       }
     } else {
-      return Q();
+      return Q()
     }
   })
   .then(function() {
-    return self.certsToCheck();
+    return self.certsToCheck()
   })
   .then(function(certs) {
     // Check if this document has a valid top-level signature
-    var validSignature = false;
+    var validSignature = false
     if (self.options.cert && self.validateSignature(xml, doc.documentElement, certs)) {
-      validSignature = true;
+      validSignature = true
     }
 
-    var assertions = xpath(doc, "/*[local-name()='Response']/*[local-name()='Assertion']");
+    var assertions = xpath(doc, "/*[local-name()='Response']/*[local-name()='Assertion']")
     var encryptedAssertions = xpath(doc,
-      "/*[local-name()='Response']/*[local-name()='EncryptedAssertion']");
+      "/*[local-name()='Response']/*[local-name()='EncryptedAssertion']")
 
     if (assertions.length + encryptedAssertions.length > 1) {
       // There's no reason I know of that we want to handle multiple assertions, and it seems like a
       //   potential risk vector for signature scope issues, so treat this as an invalid signature
-      throw new Error('Invalid signature');
+      throw new Error('Invalid signature')
     }
 
     if (assertions.length == 1) {
       if (self.options.cert &&
           !validSignature &&
           !self.validateSignature(xml, assertions[0], certs)) {
-        throw new Error('Invalid signature');
+        throw new Error('Invalid signature')
       }
-      return self.processValidlySignedAssertion(assertions[0].toString(), inResponseTo, callback);
+      return self.processValidlySignedAssertion(assertions[0].toString(), inResponseTo, callback)
     }
 
     if (encryptedAssertions.length == 1) {
       if (!self.options.decryptionPvk)
-        throw new Error('No decryption key for encrypted SAML response');
+        throw new Error('No decryption key for encrypted SAML response')
 
-      var encryptedAssertionXml = encryptedAssertions[0].toString();
+      var encryptedAssertionXml = encryptedAssertions[0].toString()
 
-      var xmlencOptions = { key: self.options.decryptionPvk };
+      var xmlencOptions = { key: self.options.decryptionPvk }
       return Q.ninvoke(xmlenc, 'decrypt', encryptedAssertionXml, xmlencOptions)
         .then(function(decryptedXml) {
-          var decryptedDoc = new xmldom.DOMParser().parseFromString(decryptedXml);
-          var decryptedAssertions = xpath(decryptedDoc, "/*[local-name()='Assertion']");
+          var decryptedDoc = new xmldom.DOMParser().parseFromString(decryptedXml)
+          var decryptedAssertions = xpath(decryptedDoc, "/*[local-name()='Assertion']")
           if (decryptedAssertions.length != 1)
-            throw new Error('Invalid EncryptedAssertion content');
+            throw new Error('Invalid EncryptedAssertion content')
 
           if (self.options.cert &&
               !validSignature &&
               !self.validateSignature(decryptedXml, decryptedAssertions[0], certs))
-            throw new Error('Invalid signature');
+            throw new Error('Invalid signature')
 
-          self.processValidlySignedAssertion(decryptedAssertions[0].toString(), inResponseTo, callback);
-        });
+          self.processValidlySignedAssertion(decryptedAssertions[0].toString(), inResponseTo, callback)
+        })
     }
 
     // If there's no assertion, fall back on xml2js response parsing for the status &
@@ -646,24 +634,24 @@ SAML.prototype.validatePostResponse = function (container, callback) {
       explicitRoot: true,
       explicitCharkey: true,
       tagNameProcessors: [xml2js.processors.stripPrefix]
-    };
-    var parser = new xml2js.Parser(parserConfig);
+    }
+    var parser = new xml2js.Parser(parserConfig)
     return Q.ninvoke( parser, 'parseString', xml)
       .then(function(doc) {
-        var response = doc.Response;
+        var response = doc.Response
         if (response) {
-          var assertion = response.Assertion;
+          var assertion = response.Assertion
           if (!assertion) {
-            var status = response.Status;
+            var status = response.Status
             if (status) {
-              var statusCode = status[0].StatusCode;
+              var statusCode = status[0].StatusCode
               if (statusCode && statusCode[0].$.Value === "urn:oasis:names:tc:SAML:2.0:status:Responder") {
-                var nestedStatusCode = statusCode[0].StatusCode;
+                var nestedStatusCode = statusCode[0].StatusCode
                 if (nestedStatusCode && nestedStatusCode[0].$.Value === "urn:oasis:names:tc:SAML:2.0:status:NoPassive") {
                   if (self.options.cert && !validSignature) {
-                    throw new Error('Invalid signature');
+                    throw new Error('Invalid signature')
                   }
-                  return callback(null, null, false);
+                  return callback(null, null, false)
                 }
               }
 
@@ -671,104 +659,104 @@ SAML.prototype.validatePostResponse = function (container, callback) {
               //   throwing an error in any case, and some providers don't sign error results,
               //   let's go ahead and give the potentially more helpful error.
               if (statusCode && statusCode[0].$.Value) {
-                var msgType = statusCode[0].$.Value.match(/[^:]*$/)[0];
+                var msgType = statusCode[0].$.Value.match(/[^:]*$/)[0]
                 if (msgType != 'Success') {
-                  var msg = 'unspecified';
+                  var msg = 'unspecified'
                   if (status[0].StatusMessage) {
-                    msg = status[0].StatusMessage[0]._;
+                    msg = status[0].StatusMessage[0]._
                   } else if (statusCode[0].StatusCode) {
-                    msg = statusCode[0].StatusCode[0].$.Value.match(/[^:]*$/)[0];
+                    msg = statusCode[0].StatusCode[0].$.Value.match(/[^:]*$/)[0]
                   }
-                  var error = new Error('SAML provider returned ' + msgType + ' error: ' + msg);
+                  var error = new Error('SAML provider returned ' + msgType + ' error: ' + msg)
                   var builderOpts = {
                     rootName: 'Status',
                     headless: true
-                  };
-                  error.statusXml = new xml2js.Builder(builderOpts).buildObject(status[0]);
-                  throw error;
+                  }
+                  error.statusXml = new xml2js.Builder(builderOpts).buildObject(status[0])
+                  throw error
                 }
               }
             }
-            throw new Error('Missing SAML assertion');
+            throw new Error('Missing SAML assertion')
           }
         } else {
           if (self.options.cert && !validSignature) {
-            throw new Error('Invalid signature');
+            throw new Error('Invalid signature')
           }
-          var logoutResponse = doc.LogoutResponse;
+          var logoutResponse = doc.LogoutResponse
           if (logoutResponse){
-            return callback(null, null, true);
+            return callback(null, null, true)
           } else {
-            throw new Error('Unknown SAML response message');
+            throw new Error('Unknown SAML response message')
           }
         }
-      });
+      })
   })
   .fail(function(err) {
-    callback(err);
+    callback(err)
   })
-  .done();
-};
+  .done()
+}
 
 SAML.prototype.processValidlySignedAssertion = function(xml, inResponseTo, callback) {
-  var self = this;
-  var msg;
+  var self = this
+  var msg
   var parserConfig = {
     explicitRoot: true,
     tagNameProcessors: [xml2js.processors.stripPrefix]
-  };
-  var nowMs = new Date().getTime();
-  var profile = {};
-  var assertion;
-  var parser = new xml2js.Parser(parserConfig);
+  }
+  var nowMs = new Date().getTime()
+  var profile = {}
+  var assertion
+  var parser = new xml2js.Parser(parserConfig)
   Q.ninvoke(parser, 'parseString', xml)
   .then(function(doc) {
-    assertion = doc.Assertion;
+    assertion = doc.Assertion
 
-    var issuer = assertion.Issuer;
+    var issuer = assertion.Issuer
     if (issuer) {
-      profile.issuer = issuer[0];
+      profile.issuer = issuer[0]
     }
 
-    var authnStatement = assertion.AuthnStatement;
+    var authnStatement = assertion.AuthnStatement
     if (authnStatement) {
       if (authnStatement[0].$ && authnStatement[0].$.SessionIndex) {
-        profile.sessionIndex = authnStatement[0].$.SessionIndex;
+        profile.sessionIndex = authnStatement[0].$.SessionIndex
       }
     }
 
-    var subject = assertion.Subject;
-    var subjectConfirmation, confirmData;
+    var subject = assertion.Subject
+    var subjectConfirmation, confirmData
     if (subject) {
-      var nameID = subject[0].NameID;
+      var nameID = subject[0].NameID
       if (nameID) {
-        profile.nameID = nameID[0]._ || nameID[0];
+        profile.nameID = nameID[0]._ || nameID[0]
 
         if (nameID[0].$ && nameID[0].$.Format) {
-          profile.nameIDFormat = nameID[0].$.Format;
-          profile.nameQualifier = nameID[0].$.NameQualifier;
-          profile.spNameQualifier = nameID[0].$.SPNameQualifier;
+          profile.nameIDFormat = nameID[0].$.Format
+          profile.nameQualifier = nameID[0].$.NameQualifier
+          profile.spNameQualifier = nameID[0].$.SPNameQualifier
         }
       }
 
       subjectConfirmation = subject[0].SubjectConfirmation ?
-                            subject[0].SubjectConfirmation[0] : null;
+                            subject[0].SubjectConfirmation[0] : null
       confirmData = subjectConfirmation && subjectConfirmation.SubjectConfirmationData ?
-                    subjectConfirmation.SubjectConfirmationData[0] : null;
+                    subjectConfirmation.SubjectConfirmationData[0] : null
       if (subject[0].SubjectConfirmation && subject[0].SubjectConfirmation.length > 1) {
-        msg = 'Unable to process multiple SubjectConfirmations in SAML assertion';
-        throw new Error(msg);
+        msg = 'Unable to process multiple SubjectConfirmations in SAML assertion'
+        throw new Error(msg)
       }
 
       if (subjectConfirmation) {
         if (confirmData && confirmData.$) {
-          var subjectNotBefore = confirmData.$.NotBefore;
-          var subjectNotOnOrAfter = confirmData.$.NotOnOrAfter;
+          var subjectNotBefore = confirmData.$.NotBefore
+          var subjectNotOnOrAfter = confirmData.$.NotOnOrAfter
 
           var subjErr = self.checkTimestampsValidityError(
-                          nowMs, subjectNotBefore, subjectNotOnOrAfter);
+                          nowMs, subjectNotBefore, subjectNotOnOrAfter)
           if (subjErr) {
-            throw subjErr;
+            throw subjErr
           }
         }
       }
@@ -779,209 +767,209 @@ SAML.prototype.processValidlySignedAssertion = function(xml, inResponseTo, callb
     if (self.options.validateInResponseTo) {
       if (subjectConfirmation) {
         if (confirmData && confirmData.$) {
-          var subjectInResponseTo = confirmData.$.InResponseTo;
+          var subjectInResponseTo = confirmData.$.InResponseTo
           if (inResponseTo && subjectInResponseTo && subjectInResponseTo != inResponseTo) {
             return Q.ninvoke(self.cacheProvider, 'remove', inResponseTo)
               .then(function(){
-                throw new Error('InResponseTo is not valid');
-              });
+                throw new Error('InResponseTo is not valid')
+              })
           } else if (subjectInResponseTo) {
-            var foundValidInResponseTo = false;
+            var foundValidInResponseTo = false
             return Q.ninvoke(self.cacheProvider, 'get', subjectInResponseTo)
               .then(function(result){
                 if (result) {
-                  var createdAt = new Date(result);
+                  var createdAt = new Date(result)
                   if (nowMs < createdAt.getTime() + self.options.requestIdExpirationPeriodMs)
-                    foundValidInResponseTo = true;
+                    foundValidInResponseTo = true
                 }
-                return Q.ninvoke(self.cacheProvider, 'remove', inResponseTo );
+                return Q.ninvoke(self.cacheProvider, 'remove', inResponseTo )
               })
               .then(function(){
                 if (!foundValidInResponseTo) {
-                  throw new Error('InResponseTo is not valid');
+                  throw new Error('InResponseTo is not valid')
                 }
-                return Q();
-              });
+                return Q()
+              })
           }
         }
       } else {
-        return Q.ninvoke(self.cacheProvider, 'remove', inResponseTo);
+        return Q.ninvoke(self.cacheProvider, 'remove', inResponseTo)
       }
     } else {
-      return Q();
+      return Q()
     }
   })
   .then(function(){
-    var conditions = assertion.Conditions ? assertion.Conditions[0] : null;
+    var conditions = assertion.Conditions ? assertion.Conditions[0] : null
     if (assertion.Conditions && assertion.Conditions.length > 1) {
-      msg = 'Unable to process multiple conditions in SAML assertion';
-      throw new Error(msg);
+      msg = 'Unable to process multiple conditions in SAML assertion'
+      throw new Error(msg)
     }
     if(conditions && conditions.$) {
       var conErr = self.checkTimestampsValidityError(
-                    nowMs, conditions.$.NotBefore, conditions.$.NotOnOrAfter);
+                    nowMs, conditions.$.NotBefore, conditions.$.NotOnOrAfter)
       if(conErr)
-        throw conErr;
+        throw conErr
     }
 
     if (self.options.audience) {
       var audienceErr = self.checkAudienceValidityError(
-                    self.options.audience, conditions.AudienceRestriction);
+                    self.options.audience, conditions.AudienceRestriction)
       if(audienceErr)
-        throw audienceErr;
+        throw audienceErr
     }
 
-    var attributeStatement = assertion.AttributeStatement;
+    var attributeStatement = assertion.AttributeStatement
     if (attributeStatement) {
       var attributes = [].concat.apply([], attributeStatement.filter(function (attr) {
-        return Array.isArray(attr.Attribute);
+        return Array.isArray(attr.Attribute)
       }).map(function (attr) {
-        return attr.Attribute;
-      }));
+        return attr.Attribute
+      }))
 
       var attrValueMapper = function(value) {
-        return typeof value === 'string' ? value : value._;
-      };
+        return typeof value === 'string' ? value : value._
+      }
 
       if (attributes) {
         attributes.forEach(function (attribute) {
          if(!attribute.hasOwnProperty('AttributeValue')) {
             // if attributes has no AttributeValue child, continue
-            return;
+            return
           }
-          var value = attribute.AttributeValue;
+          var value = attribute.AttributeValue
           if (value.length === 1) {
-            profile[attribute.$.Name] = attrValueMapper(value[0]);
+            profile[attribute.$.Name] = attrValueMapper(value[0])
           } else {
-            profile[attribute.$.Name] = value.map(attrValueMapper);
+            profile[attribute.$.Name] = value.map(attrValueMapper)
           }
-        });
+        })
       }
     }
 
     if (!profile.mail && profile['urn:oid:0.9.2342.19200300.100.1.3']) {
       // See http://www.incommonfederation.org/attributesummary.html for definition of attribute OIDs
-      profile.mail = profile['urn:oid:0.9.2342.19200300.100.1.3'];
+      profile.mail = profile['urn:oid:0.9.2342.19200300.100.1.3']
     }
 
     if (!profile.email && profile.mail) {
-      profile.email = profile.mail;
+      profile.email = profile.mail
     }
 
-    profile.getAssertionXml = function() { return xml; };
+    profile.getAssertionXml = function() { return xml }
 
-    callback(null, profile, false);
+    callback(null, profile, false)
   })
   .fail(function(err) {
-    callback(err);
+    callback(err)
   })
-  .done();
-};
+  .done()
+}
 
 SAML.prototype.checkTimestampsValidityError = function(nowMs, notBefore, notOnOrAfter) {
-  var self = this;
+  var self = this
   if (self.options.acceptedClockSkewMs == -1)
-      return null;
+      return null
 
   if (notBefore) {
-    var notBeforeMs = Date.parse(notBefore);
+    var notBeforeMs = Date.parse(notBefore)
     if (nowMs + self.options.acceptedClockSkewMs < notBeforeMs)
-        return new Error('SAML assertion not yet valid');
+        return new Error('SAML assertion not yet valid')
   }
   if (notOnOrAfter) {
-    var notOnOrAfterMs = Date.parse(notOnOrAfter);
+    var notOnOrAfterMs = Date.parse(notOnOrAfter)
     if (nowMs - self.options.acceptedClockSkewMs >= notOnOrAfterMs)
-      return new Error('SAML assertion expired');
+      return new Error('SAML assertion expired')
   }
 
-  return null;
-};
+  return null
+}
 
 SAML.prototype.checkAudienceValidityError = function(expectedAudience, audienceRestrictions) {
-  var self = this;
+  var self = this
   if (!audienceRestrictions || audienceRestrictions.length < 1) {
-    return new Error('SAML assertion has no AudienceRestriction');
+    return new Error('SAML assertion has no AudienceRestriction')
   }
   var errors = audienceRestrictions.map(function(restriction) {
     if (!restriction.Audience || !restriction.Audience[0]) {
-      return new Error('SAML assertion AudienceRestriction has no Audience value');
+      return new Error('SAML assertion AudienceRestriction has no Audience value')
     }
     if (restriction.Audience[0] !== expectedAudience) {
-      return new Error('SAML assertion audience mismatch');
+      return new Error('SAML assertion audience mismatch')
     }
-    return null;
+    return null
   }).filter(function(result) {
-    return result !== null;
-  });
+    return result !== null
+  })
   if (errors.length > 0) {
-    return errors[0];
+    return errors[0]
   }
-  return null;
-};
+  return null
+}
 
 SAML.prototype.validatePostRequest = function (container, callback) {
-  var self = this;
-  var xml = new Buffer(container.SAMLRequest, 'base64').toString('utf8');
-  var dom = new xmldom.DOMParser().parseFromString(xml);
+  var self = this
+  var xml = new Buffer(container.SAMLRequest, 'base64').toString('utf8')
+  var dom = new xmldom.DOMParser().parseFromString(xml)
   var parserConfig = {
     explicitRoot: true,
     tagNameProcessors: [xml2js.processors.stripPrefix]
-  };
-  var parser = new xml2js.Parser(parserConfig);
+  }
+  var parser = new xml2js.Parser(parserConfig)
   parser.parseString(xml, function (err, doc) {
     if (err) {
-      return callback(err);
+      return callback(err)
     }
 
     self.certsToCheck()
     .then(function(certs) {
       // Check if this document has a valid top-level signature
       if (self.options.cert && !self.validateSignature(xml, dom.documentElement, certs)) {
-        return callback(new Error('Invalid signature'));
+        return callback(new Error('Invalid signature'))
       }
 
-      processValidlySignedPostRequest(self, doc, callback);
+      processValidlySignedPostRequest(self, doc, callback)
     })
     .fail(function(err) {
-      callback(err);
-    });
-  });
-};
+      callback(err)
+    })
+  })
+}
 
 function processValidlySignedPostRequest(self, doc, callback) {
-    var request = doc.LogoutRequest;
+    var request = doc.LogoutRequest
     if (request) {
-      var profile = {};
+      var profile = {}
       if (request.$.ID) {
-          profile.ID = request.$.ID;
+          profile.ID = request.$.ID
       } else {
-        return callback(new Error('Missing SAML LogoutRequest ID'));
+        return callback(new Error('Missing SAML LogoutRequest ID'))
       }
-      var issuer = request.Issuer;
+      var issuer = request.Issuer
       if (issuer) {
-        profile.issuer = issuer[0];
+        profile.issuer = issuer[0]
       } else {
-        return callback(new Error('Missing SAML issuer'));
+        return callback(new Error('Missing SAML issuer'))
       }
 
-      var nameID = request.NameID;
+      var nameID = request.NameID
       if (nameID) {
-        profile.nameID = nameID[0]._ || nameID[0];
+        profile.nameID = nameID[0]._ || nameID[0]
 
         if (nameID[0].$ && nameID[0].$.Format) {
-          profile.nameIDFormat = nameID[0].$.Format;
+          profile.nameIDFormat = nameID[0].$.Format
         }
       } else {
-        return callback(new Error('Missing SAML NameID'));
+        return callback(new Error('Missing SAML NameID'))
       }
-      var sessionIndex = request.SessionIndex;
+      var sessionIndex = request.SessionIndex
       if (sessionIndex) {
-        profile.sessionIndex = sessionIndex[0];
+        profile.sessionIndex = sessionIndex[0]
       }
 
-      callback(null, profile, true);
+      callback(null, profile, true)
     } else {
-      return callback(new Error('Unknown SAML request message'));
+      return callback(new Error('Unknown SAML request message'))
     }
 }
 
@@ -996,17 +984,17 @@ SAML.prototype.generateServiceProviderMetadata = function( decryptionCert ) {
         '@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:2.0:protocol',
       },
     }
-  };
+  }
 
   if (this.options.decryptionPvk) {
     if (!decryptionCert) {
       throw new Error(
-        "Missing decryptionCert while generating metadata for decrypting service provider");
+        "Missing decryptionCert while generating metadata for decrypting service provider")
     }
 
-    decryptionCert = decryptionCert.replace( /-+BEGIN CERTIFICATE-+\r?\n?/, '' );
-    decryptionCert = decryptionCert.replace( /-+END CERTIFICATE-+\r?\n?/, '' );
-    decryptionCert = decryptionCert.replace( /\r\n/g, '\n' );
+    decryptionCert = decryptionCert.replace( /-+BEGIN CERTIFICATE-+\r?\n?/, '' )
+    decryptionCert = decryptionCert.replace( /-+END CERTIFICATE-+\r?\n?/, '' )
+    decryptionCert = decryptionCert.replace( /\r\n/g, '\n' )
 
     metadata.EntityDescriptor.SPSSODescriptor.KeyDescriptor = {
       'ds:KeyInfo' : {
@@ -1022,25 +1010,25 @@ SAML.prototype.generateServiceProviderMetadata = function( decryptionCert ) {
         { '@Algorithm': 'http://www.w3.org/2001/04/xmlenc#aes128-cbc' },
         { '@Algorithm': 'http://www.w3.org/2001/04/xmlenc#tripledes-cbc' }
       ]
-    };
+    }
   }
 
   if (this.options.logoutCallbackUrl) {
     metadata.EntityDescriptor.SPSSODescriptor.SingleLogoutService = {
       '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
       '@Location': this.options.logoutCallbackUrl
-    };
+    }
   }
 
-  metadata.EntityDescriptor.SPSSODescriptor.NameIDFormat = this.options.identifierFormat;
+  metadata.EntityDescriptor.SPSSODescriptor.NameIDFormat = this.options.identifierFormat
   metadata.EntityDescriptor.SPSSODescriptor.AssertionConsumerService = {
     '@index': '1',
     '@isDefault': 'true',
     '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
     '@Location': this.getCallbackUrl({})
-  };
+  }
 
-  return xmlbuilder.create(metadata).end({ pretty: true, indent: '  ', newline: '\n' });
-};
+  return xmlbuilder.create(metadata).end({ pretty: true, indent: '  ', newline: '\n' })
+}
 
-exports.SAML = SAML;
+exports.SAML = SAML
