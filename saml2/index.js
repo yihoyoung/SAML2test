@@ -3,7 +3,7 @@
  */
 
 
-const SAML = require('passport-saml').SAML
+const SAML = require('./passport-saml').SAML
 const fs = require('fs')
 const path = require('path')
 const request = require('request')
