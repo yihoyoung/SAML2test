@@ -3,7 +3,7 @@
  */
 
 
-const SAML = require('./passport-saml').SAML
+const SAML = require('passport-saml').SAML
 const fs = require('fs')
 const path = require('path')
 
@@ -92,9 +92,35 @@ exports.consume = async function (ctx) {
 
 exports.logout = async function (ctx) {
 
-  console.log(JSON.stringify({user: global.session}))
-  let result = await new Promise((resolve, reject) => {
-    saml.getLogoutUrl({user: global.session}, (err, result) => {
+  let requestData = ctx.request.body
+  let data = await new Promise((resolve, reject) => {
+    saml.validatePostResponse(requestData, (error, result) => {
+      if (error) {
+        reject({
+          status: 500,
+          message: error.message
+        })
+      }
+
+      resolve(result)
+    })
+  })
+
+  console.log(JSON.stringify(data))
+  global.session = null
+  // session.removeKeyByIDPClientId(data.IDPClientId)
+
+  let responseUrl = saml.getLogoutResponseUrl(data)
+  request(responseUrl, (err, result) => {
+    console.log(result)
+  })
+}
+
+exports.logoutRedirect = async function (ctx) {
+
+  let user = global.session
+  let logoutUrl = await new Promise((resolve, reject) => {
+    saml.getLogoutUrl({user}, (err, result) => {
       if (err) {
         reject(err)
       }
@@ -103,36 +129,27 @@ exports.logout = async function (ctx) {
     })
   })
 
-  console.log(JSON.stringify(result))
-  ctx.response.redirect(result)
-}
-
-exports.logoutResponse = async function (ctx) {
-
-  let body = ctx.request.body
-  console.log(JSON.stringify(body))
-
-  let userData = await new Promise((resolve, reject) => {
-    saml.validatePostResponse(body, (error, result) => {
-      if (error) {
-        reject({
-          status: 500,
-          message: error.message
-        })
-      }
-
-      console.log(result)
-      resolve(result)
+  try {
+    let idpResult = await new Promise((resolve, reject) => {
+      request.get(logoutUrl, null, function(err, response, body) {
+        if (err) {
+          reject(err)
+        }
+        console.log(`response: ${JSON.stringify(response)}`)
+        console.log(`body: ${JSON.stringify(body)}`)
+        resolve(response)
+      })
     })
-  })
 
-  if (!userData.status) {
-    global.session = userData
-    ctx.response.redirect('/')
-  } else {
-    ctx.response.status = userData.status
-    ctx.response.body = userData
+    console.log(JSON.stringify(idpResult))
+  } catch (err) {
+    logger.error(err)
   }
+
+  user = null
+  //session.removeKeyByIDPClientId(user.IDPClientId)
+
+  this.redirect('/')
 }
 
 function _getDecreptionCer() {
