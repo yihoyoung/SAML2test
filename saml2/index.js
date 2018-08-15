@@ -94,7 +94,8 @@ exports.consume = async function (ctx) {
 
 exports.logout = async function (ctx) {
 
-  let requestData = ctx.request.body
+  console.log(JSON.stringify(ctx))
+  let requestData = ctx.query
   let data = await new Promise((resolve, reject) => {
     saml.validatePostResponse(requestData, (error, result) => {
       if (error) {
@@ -143,6 +144,9 @@ exports.logoutRedirect = async function (ctx) {
       })
     })
 
+    if (idpResult.statusCode !== 200) {
+      throw new Error()
+    }
     console.log(JSON.stringify(idpResult))
   } catch (err) {
     console.error(err)
