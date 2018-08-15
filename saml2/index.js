@@ -25,6 +25,7 @@ let options = {
   path: '/saml2/consume',
   signatureAlgorithm: 'sha256',
   identifierFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+  nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
   entryPoint: 'http://119.254.155.28:6789/sso/saml2.0/authn',
 }
 
@@ -143,13 +144,13 @@ exports.logoutRedirect = async function (ctx) {
 
     console.log(JSON.stringify(idpResult))
   } catch (err) {
-    logger.error(err)
+    console.error(err)
   }
 
   user = null
   //session.removeKeyByIDPClientId(user.IDPClientId)
 
-  this.redirect('/')
+  ctx.response.redirect('/')
 }
 
 function _getDecreptionCer() {

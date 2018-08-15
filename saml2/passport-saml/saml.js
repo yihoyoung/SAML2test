@@ -223,11 +223,11 @@ SAML.prototype.generateLogoutRequest = function (req) {
         '#text': this.options.issuer
       },
       'saml:NameID' : {
-        '@Format': req.user.nameIDFormat,
+        '@Format': this.options.nameIDFormat,
         '#text': req.user.nameID
       },
       'saml:IDPClientId' : {
-        '@Format': req.user.nameIDFormat,
+        '@Format': this.options.nameIDFormat,
         '#text': req.user.IDPClientId
       }
     }
