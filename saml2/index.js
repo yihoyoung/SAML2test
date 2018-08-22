@@ -7,7 +7,7 @@ const SAML = require('./passport-saml').SAML
 const fs = require('fs')
 const path = require('path')
 const request = require('request')
-
+const sslkeys = {}
 
 
 let options = {
@@ -159,13 +159,15 @@ exports.logoutRedirect = async function (ctx) {
 }
 
 function _getDecreptionCer() {
-  let cer = fs.readFileSync(path.join(__dirname, 'credentials/rsacert.crt'))
-  cer = cer.toString()
-  return cer
+  if (sslkeys.cer) return sslkeys.cer
+  sslkeys.cer = fs.readFileSync(path.join(__dirname, 'credentials/rsacert.crt'))
+  sslkeys.cer = sslkeys.cer.toString()
+  return sslkeys.cer
 }
 
 function _getPvk() {
-  let pvk = fs.readFileSync(path.join(__dirname, 'credentials/private.pem'))
-  pvk = pvk.toString()
-  return pvk
+  if (sslkeys.pvk) return sslkeys.pvk
+  sslkeys.pvk = fs.readFileSync(path.join(__dirname, 'credentials/private.pem'))
+  sslkeys.pvk = sslkeys.pvk.toString()
+  return sslkeys.pvk
 }
